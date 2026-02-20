@@ -1,0 +1,10 @@
+[package]
+name = "iot_sdk"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+btleplug = "0.11.8"
+futures = "0.3.31"
+thiserror = "2.0.12"
+uuid = "1.19.0"
