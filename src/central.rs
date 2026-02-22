@@ -19,7 +19,7 @@ impl Central {
         Ok(Self(central))
     }
 
-    async fn peripheral_properties(&self) -> Result<impl Stream<Item = PeripheralProperties>, Error> {
+    pub async fn peripheral_properties(&self) -> Result<impl Stream<Item = PeripheralProperties>, Error> {
         let peripherals = self.events().await?.filter_map(|central_event| async {
             if let CentralEvent::DeviceUpdated(id) = central_event {
                 let peripheral = self.0.peripheral(&id).await.unwrap();
