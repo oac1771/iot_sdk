@@ -5,7 +5,7 @@ use btleplug::{
     },
     platform::{Adapter, Manager as PlatformManager, Peripheral as PlatformPeripheral},
 };
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, pin_mut};
 use uuid::Uuid;
 
 pub struct Central(Adapter);
@@ -19,13 +19,25 @@ impl Central {
         Ok(Self(central))
     }
 
-    pub async fn find_peripheral(&self, local_name: &str) -> Result<PlatformPeripheral, Error> {
-        let mut events = self.0.events().await?;
-        self.0.start_scan(ScanFilter::default()).await?;
+    pub async fn peripherals(&self) -> Result<impl Stream<Item = PlatformPeripheral>, Error> {
+        let peripherals = self.events().await?.filter_map(|central_event| async {
+            if let CentralEvent::DeviceUpdated(id) = central_event {
+                let peripheral = self.0.peripheral(&id).await.unwrap();
+                Some(peripheral)
+            } else {
+                None
+            }
+        });
+        Ok(peripherals)
+    }
+
+    pub async fn find_peripheral(&self, local_name: &str) -> Result<(), Error> {
+        let peripherals = self.peripherals().await?;
+
+        pin_mut!(peripherals);
 
         let peripheral = loop {
-            if let Some(CentralEvent::DeviceUpdated(id)) = events.next().await {
-                let peripheral = self.0.peripheral(&id).await?;
+            if let Some(peripheral) = peripherals.next().await {
                 let properties = peripheral
                     .properties()
                     .await?
@@ -44,7 +56,7 @@ impl Central {
         peripheral.connect().await?;
         peripheral.discover_services().await?;
 
-        Ok(peripheral)
+        Ok(())
     }
 
     pub async fn subscribe(
@@ -131,6 +143,13 @@ impl Central {
         let result = peripheral.read(characteristic).await?;
 
         Ok(result)
+    }
+
+    async fn events(&self) -> Result<impl Stream<Item = CentralEvent>, Error> {
+        let events = self.0.events().await?;
+        self.0.start_scan(ScanFilter::default()).await?;
+
+        Ok(events)
     }
 }
 
