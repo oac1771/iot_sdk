@@ -37,7 +37,7 @@ impl Central {
         Ok(peripherals)
     }
 
-    pub async fn find_peripheral(&self, local_name: &str) -> Result<(), Error> {
+    pub async fn find_peripheral(&self, local_name: &str) -> Result<PlatformPeripheral, Error> {
         let peripherals = self.peripherals().await?;
 
         pin_mut!(peripherals);
@@ -62,7 +62,7 @@ impl Central {
         peripheral.connect().await?;
         peripheral.discover_services().await?;
 
-        Ok(())
+        Ok(peripheral)
     }
 
     pub async fn subscribe(
