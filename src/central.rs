@@ -1,7 +1,7 @@
 use btleplug::{
     api::{
-        Central as ApiCentral, CentralEvent, CharPropFlags, Manager, Peripheral, ScanFilter,
-        ValueNotification, PeripheralProperties
+        Central as ApiCentral, CentralEvent, CharPropFlags, Manager, Peripheral,
+        PeripheralProperties, ScanFilter, ValueNotification,
     },
     platform::{Adapter, Manager as PlatformManager, Peripheral as PlatformPeripheral},
 };
@@ -19,21 +19,30 @@ impl Central {
         Ok(Self(central))
     }
 
-    pub async fn peripheral_properties(&self) -> Result<impl Stream<Item = PeripheralProperties>, Error> {
+    pub async fn peripheral_properties(
+        &self,
+    ) -> Result<impl Stream<Item = PeripheralProperties>, Error> {
         let peripherals = self.events().await?.filter_map(|central_event| async {
-            if let CentralEvent::DeviceUpdated(id) = central_event {
-                let peripheral = self.0.peripheral(&id).await.unwrap();
-                let properties = peripheral
-                    .properties()
-                    .await
-                    .unwrap()
-                    .ok_or_else(|| Error::PeripheralPropertiesNotFound)
-                    .unwrap();
-                Some(properties)
-            } else {
-                None
+            let result = async {
+                if let CentralEvent::DeviceUpdated(id) = central_event {
+                    let peripheral = self.0.peripheral(&id).await?;
+                    let properties = peripheral
+                        .properties()
+                        .await?
+                        .ok_or_else(|| Error::PeripheralPropertiesNotFound)?;
+                    Ok(properties)
+                } else {
+                    Err(Error::PeripheralPropertiesNotFound)
+                }
+            }
+            .await;
+
+            match result {
+                Ok(properties) => Some(properties),
+                Err(_) => None,
             }
         });
+
         Ok(peripherals)
     }
 
@@ -160,11 +169,19 @@ impl Central {
 
     async fn peripherals(&self) -> Result<impl Stream<Item = PlatformPeripheral>, Error> {
         let peripherals = self.events().await?.filter_map(|central_event| async {
-            if let CentralEvent::DeviceUpdated(id) = central_event {
-                let peripheral = self.0.peripheral(&id).await.unwrap();
-                Some(peripheral)
-            } else {
-                None
+            let result = async {
+                if let CentralEvent::DeviceUpdated(id) = central_event {
+                    let peripheral = self.0.peripheral(&id).await?;
+                    Ok(peripheral)
+                } else {
+                    Err(Error::PeripheralNotFound)
+                }
+            }
+            .await;
+
+            match result {
+                Ok(peripheral) => Some(peripheral),
+                Err(_) => None,
             }
         });
         Ok(peripherals)
@@ -184,6 +201,9 @@ pub enum Error {
 
     #[error("PeripheralPropertiesNotFound")]
     PeripheralPropertiesNotFound,
+
+    #[error("PeripheralNotFound")]
+    PeripheralNotFound,
 
     #[error("LocalNameNotFound")]
     LocalNameNotFound,
