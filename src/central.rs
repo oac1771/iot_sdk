@@ -52,12 +52,9 @@ impl Central {
                     .properties()
                     .await?
                     .ok_or_else(|| Error::PeripheralPropertiesNotFound)?;
+                let peripheral_local_name = properties.local_name.ok_or_else(|| Error::LocalNameNotFound)?;
 
-                if properties
-                    .local_name
-                    .ok_or_else(|| Error::LocalNameNotFound)?
-                    == local_name
-                {
+                if peripheral_local_name.contains(local_name) {
                     break peripheral;
                 }
             }
