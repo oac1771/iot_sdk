@@ -52,16 +52,15 @@ impl Central {
                     .properties()
                     .await?
                     .ok_or_else(|| Error::PeripheralPropertiesNotFound)?;
-                let peripheral_local_name = properties.local_name.ok_or_else(|| Error::LocalNameNotFound)?;
+                let peripheral_local_name = properties
+                    .local_name
+                    .ok_or_else(|| Error::LocalNameNotFound)?;
 
                 if peripheral_local_name.contains(local_name) {
                     break peripheral;
                 }
             }
         };
-
-        peripheral.connect().await?;
-        peripheral.discover_services().await?;
 
         Ok(peripheral)
     }
