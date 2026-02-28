@@ -22,18 +22,13 @@ impl Central {
     pub async fn peripheral_properties(
         &self,
     ) -> Result<impl Stream<Item = PeripheralProperties>, Error> {
-        let peripherals = self.events().await?.filter_map(|central_event| async {
-            let result = async {
-                if let CentralEvent::DeviceUpdated(id) = central_event {
-                    let peripheral = self.0.peripheral(&id).await?;
-                    let properties = peripheral
-                        .properties()
-                        .await?
-                        .ok_or_else(|| Error::PeripheralPropertiesNotFound)?;
-                    Ok(properties)
-                } else {
-                    Err(Error::PeripheralPropertiesNotFound)
-                }
+        let peripheral_properties = self.peripherals().await?.filter_map(|p| async move {
+            let result: Result<PeripheralProperties, Error> = async {
+                let properties = p
+                    .properties()
+                    .await?
+                    .ok_or_else(|| Error::PeripheralPropertiesNotFound)?;
+                Ok(properties)
             }
             .await;
 
@@ -43,7 +38,7 @@ impl Central {
             }
         });
 
-        Ok(peripherals)
+        Ok(peripheral_properties)
     }
 
     pub async fn find_peripheral(&self, local_name: &str) -> Result<PlatformPeripheral, Error> {
