@@ -8,6 +8,7 @@ use btleplug::{
 use futures::{Stream, StreamExt, pin_mut};
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct Central(Adapter);
 
 impl Central {
@@ -158,7 +159,7 @@ impl Central {
         Ok(events)
     }
 
-    async fn peripherals(&self) -> Result<impl Stream<Item = PlatformPeripheral>, Error> {
+    pub async fn peripherals(&self) -> Result<impl Stream<Item = PlatformPeripheral>, Error> {
         let peripherals = self.events().await?.filter_map(|central_event| async {
             let result = async {
                 if let CentralEvent::DeviceUpdated(id) = central_event {
